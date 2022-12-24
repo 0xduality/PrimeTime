@@ -1,1 +1,5 @@
-PrimeTimeTest:testHappyCase() (gas: 186)
+PrimeTimeTest:testCivilFromDays() (gas: 352944)
+PrimeTimeTest:testHappyCase() (gas: 243)
+PrimeTimeTest:testmodExp() (gas: 28855)
+PrimeTimeTest:testone() (gas: 13413)
+PrimeTimeTest:testprime() (gas: 664826)
