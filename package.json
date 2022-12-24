@@ -1,0 +1,18 @@
+{
+  "name": "PrimeTime",
+  "description": "Prime Time NFT",
+  "author": "0xduality",
+  "license": "Affero General Public License",
+  "version": "1.0.0",
+  "files": [
+      "src/**/*.sol"
+  ],
+  "scripts": {
+      "setup": "forge clean && forge build",
+      "update": "forge update",
+      "test": "forge clean && forge test",
+      "cov": "forge clean && forge coverage --via-ir --report lcov && genhtml -o report lcov.info",
+      "snapshot": "forge clean && forge snapshot",
+      "gas-report": "forge clean && forge test --gas-report"
+  }
+}
