@@ -4,4 +4,8 @@ pragma solidity ^0.8.16;
 /// @title Custom
 interface IPrimeTimeErrors {
     error PrimeTimeEndedError();
+    error BelowMintPriceError();
+    error AlreadyMintedError();
+    error TokenDoesNotExist();
+
 }

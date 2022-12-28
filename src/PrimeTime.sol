@@ -7,6 +7,7 @@ import "@solbase/utils/SafeTransferLib.sol";
 import "@solbase/utils/LibString.sol";
 import {ERC721} from "./ERC721.sol";
 import {IPrimeTimeErrors} from "./IPrimeTimeErrors.sol";
+import {IRenderer} from "./IRenderer.sol";
 
 import "forge-std/Test.sol";
 
@@ -23,7 +24,18 @@ contract PrimeTime is Owned(tx.origin), ReentrancyGuard, ERC721, IPrimeTimeError
                          METADATA STORAGE/LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    string baseURI;
+    struct DateTime {
+        uint16 year;
+        uint8 month;
+        uint8 day;
+        uint8 hour;
+        uint8 minute;
+        uint8 second;
+    }
+
+    address renderer;
+    mapping (uint32 => bool) public minted;
+    uint32[] public timestampOf;
 
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
@@ -31,13 +43,38 @@ contract PrimeTime is Owned(tx.origin), ReentrancyGuard, ERC721, IPrimeTimeError
 
     constructor(string memory _name, string memory _symbol) {}
 
-    /// @notice Sets the token URI
-    function setURI(string calldata _baseURI) external onlyOwner {
-        baseURI = _baseURI;
+    function mint() external payable nonReentrant
+    {
+        if (msg.value < 0.05 ether)
+            revert BelowMintPriceError();
+        if (block.timestamp > type(uint32).max)
+            revert PrimeTimeEndedError();
+        uint32 timestamp = uint32(block.timestamp);
+        if (minted[timestamp])
+            revert AlreadyMintedError();
+        minted[timestamp] = true;
+        uint32 tokenId = uint32(timestampOf.length);
+        timestampOf.push(timestamp);
+        //console.log("here");
+        _safeMint(msg.sender, tokenId);
+        //console.log("there");
     }
 
-    function isPrime(uint256 n) external returns (bool) {
-        require(2 < n && n < 4759123141, "PrimeTime: ENDED");
+    function withdraw() external onlyOwner {
+        msg.sender.safeTransferETH(address(this).balance);
+    }
+
+    function setRenderer(address rendererContract) external onlyOwner
+    {
+        renderer = rendererContract;
+    }
+
+    function _isPrime(uint256 n) internal returns (bool) {
+        if (n < 2)
+            return false;
+        if (n == 2)
+            return true;
+        require(n < 4759123141, "PrimeTime: ENDED");
         if (n % 2 == 0) {
             return false;
         }
@@ -74,10 +111,6 @@ contract PrimeTime is Owned(tx.origin), ReentrancyGuard, ERC721, IPrimeTimeError
         return true;
     }
 
-    function modExp(uint256 _b, uint256 _e, uint256 _m) external returns (uint256 result) {
-        return _modExp(_b, _e, _m);
-    }
-
     function _modExp(uint256 _b, uint256 _e, uint256 _m) internal returns (uint256 result) {
         assembly {
             // Free memory pointer
@@ -103,20 +136,82 @@ contract PrimeTime is Owned(tx.origin), ReentrancyGuard, ERC721, IPrimeTimeError
         }
     }
 
-    function civilFromDays(int256 z) external pure returns (int256 y, uint256 m, uint256 d) {
-        return _civilFromDays(z);
-    }
-
-    function _civilFromDays(int256 z) internal pure returns (int256 y, uint256 m, uint256 d) {
+    function _civilFromDays(uint256 z) internal pure returns (uint16 y, uint8 m, uint8 d) {
         z += 719468;
-        int256 era = (z >= 0 ? z : z - 146096) / 146097;
-        uint256 doe = uint256(z - era * 146097); // [0, 146096]
+        uint256 era = z / 146097;
+        uint256 doe = z - era * 146097; // [0, 146096]
         uint256 yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365; // [0, 399]
-        y = int256(yoe) + era * 400;
+        y = uint16(yoe + era * 400);
         uint256 doy = doe - (365 * yoe + yoe / 4 - yoe / 100); // [0, 365]
         uint256 mp = (5 * doy + 2) / 153; // [0, 11]
-        d = doy - (153 * mp + 2) / 5 + 1; // [1, 31]
-        m = uint256(int256(mp) + (mp < 10 ? int256(3) : int256(-9))); // [1, 12]
+        d = uint8(doy - (153 * mp + 2) / 5 + 1); // [1, 31]
+        if (mp < 10)
+            m = uint8(mp + 3);
+        else
+            m = uint8(mp - 9);
         y = m <= 2 ? y + 1 : y;
+    }
+
+        function _dateTimeFromTimestamp(uint256 timestamp) internal pure returns (DateTime memory datetime)
+    {
+        (uint16 year, uint8 month, uint8 day) = _civilFromDays(timestamp / 86400);
+        datetime.year = year;
+        datetime.month = month;
+        datetime.day = day;
+        uint256 secondsFromMidnight = timestamp % 86400;
+        datetime.second = uint8(secondsFromMidnight % 60);
+        datetime.minute = uint8((secondsFromMidnight / 60) % 60);
+        datetime.hour = uint8(secondsFromMidnight / 3600);
+    }
+
+
+
+    function dateTimeFromTimestamp(uint256 timestamp) external pure returns (DateTime memory datetime)
+    {
+        return _dateTimeFromTimestamp(timestamp);
+    }
+
+    function _primeTraits(uint32 timestamp, DateTime memory dt) internal returns (uint256 traits)
+    {
+        traits = (_isPrime(timestamp) ? 1 : 0);
+        traits = (traits<<1) + (_isPrime(dt.year) ? 1 : 0);
+        traits = (traits<<1) + (_isPrime(dt.month) ? 1 : 0);
+        traits = (traits<<1) + (_isPrime(dt.day) ? 1 : 0);
+        traits = (traits<<1) + (_isPrime(dt.hour) ? 1 : 0);
+        traits = (traits<<1) + (_isPrime(dt.minute) ? 1 : 0);
+        traits = (traits<<1) + (_isPrime(dt.second) ? 1 : 0);
+    }
+
+    
+    function isPrime(uint256 n) external returns (bool) {
+        return _isPrime(n);
+    }
+    
+    function modExp(uint256 _b, uint256 _e, uint256 _m) external returns (uint256 result) {
+        return _modExp(_b, _e, _m);
+    }
+
+    function tokenURI(uint256 tokenId) public override returns (string memory)
+    {
+        if (tokenId >= timestampOf.length)
+            revert TokenDoesNotExist();
+
+        if (renderer == address(0)) {
+            return "";
+        }
+        uint32 timestamp = timestampOf[tokenId];
+        DateTime memory datetime = _dateTimeFromTimestamp(uint256(timestamp));
+        uint256 traits = _primeTraits(timestamp, datetime);
+        return IRenderer(renderer).tokenURI(
+                tokenId,
+                traits,
+                timestamp,
+                datetime.year,
+                datetime.month,
+                datetime.day,
+                datetime.hour,
+                datetime.minute,
+                datetime.second
+            );
     }
 }
