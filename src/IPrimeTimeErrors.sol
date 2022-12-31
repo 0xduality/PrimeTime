@@ -7,5 +7,4 @@ interface IPrimeTimeErrors {
     error BelowMintPriceError();
     error AlreadyMintedError();
     error TokenDoesNotExist();
-
 }

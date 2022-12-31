@@ -18,7 +18,6 @@ contract PrimeTimeTest is Test, IPrimeTimeErrors {
     address alice;
 
     function setUp() public {
-
         string memory bidderName = "alice";
         alice = address(uint160(uint256(keccak256(bytes(bidderName)))));
         vm.label(alice, bidderName);
@@ -83,8 +82,15 @@ contract PrimeTimeTest is Test, IPrimeTimeErrors {
         require(nft.isPrime(1663651537));
     }
 
-    function assertEqualDateTime(PrimeTime.DateTime memory dt, uint16 year, uint8 month, uint8 day, uint8 hour, uint8 minute, uint8 second) internal pure
-    {
+    function assertEqualDateTime(
+        PrimeTime.DateTime memory dt,
+        uint16 year,
+        uint8 month,
+        uint8 day,
+        uint8 hour,
+        uint8 minute,
+        uint8 second
+    ) internal pure {
         require(year == dt.year, "year :(");
         require(month == dt.month, "month :(");
         require(day == dt.day, "day :(");
@@ -93,7 +99,7 @@ contract PrimeTimeTest is Test, IPrimeTimeErrors {
         require(second == dt.second, "second :(");
     }
 
-    function testDateTimeFromTimestamp() public { 
+    function testDateTimeFromTimestamp() public {
         vm.warp(3981311999);
         PrimeTime.DateTime memory dt = nft.dateTimeFromTimestamp(block.timestamp);
         assertEqualDateTime(dt, 2096, 2, 28, 23, 59, 59);
@@ -115,9 +121,11 @@ contract PrimeTimeTest is Test, IPrimeTimeErrors {
     }
 
     function testHappyCase() public {
-        vm.warp(3981311999);
+        vm.warp(1825974673);
+        uint256 s = gasleft();
         vm.prank(alice);
-        nft.mint{value: 0.05 ether}();
+        nft.mint{value: 0.1 ether}();
+        console.log("mint gas", s - gasleft());
         console.log(nft.tokenURI(0));
     }
 }

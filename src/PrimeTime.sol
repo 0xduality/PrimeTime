@@ -34,51 +34,65 @@ contract PrimeTime is Owned(tx.origin), ReentrancyGuard, ERC721, IPrimeTimeError
     }
 
     address renderer;
-    mapping (uint32 => bool) public minted;
-    uint32[] public timestampOf;
+    uint256 mintPrice;
+    mapping(uint32 => bool) public minted;
+    uint40[] public dataOf;
 
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(string memory _name, string memory _symbol) {}
+    constructor(string memory _name, string memory _symbol) {
+        mintPrice = 0.1 ether;
+    }
 
-    function mint() external payable nonReentrant
-    {
-        if (msg.value < 0.05 ether)
+    function mint() external payable nonReentrant {
+        if (msg.value < mintPrice) {
             revert BelowMintPriceError();
-        if (block.timestamp > type(uint32).max)
+        }
+        if (block.timestamp > type(uint32).max) {
             revert PrimeTimeEndedError();
+        }
         uint32 timestamp = uint32(block.timestamp);
-        if (minted[timestamp])
+        if (minted[timestamp]) {
             revert AlreadyMintedError();
+        }
         minted[timestamp] = true;
-        uint32 tokenId = uint32(timestampOf.length);
-        timestampOf.push(timestamp);
-        //console.log("here");
+        uint32 tokenId = uint32(dataOf.length);
+        DateTime memory dt = _dateTimeFromTimestamp(timestamp);
+        uint8 traits = _primeTraits(timestamp, dt);
+        uint40 value = timestamp;
+        value = (value << 8) | traits;
+        dataOf.push(value);
         _safeMint(msg.sender, tokenId);
-        //console.log("there");
+    }
+
+    function setMintPrice(uint256 price) external onlyOwner {
+        mintPrice = price;
     }
 
     function withdraw() external onlyOwner {
         msg.sender.safeTransferETH(address(this).balance);
     }
 
-    function setRenderer(address rendererContract) external onlyOwner
-    {
+    function setRenderer(address rendererContract) external onlyOwner {
         renderer = rendererContract;
     }
 
     function _isPrime(uint256 n) internal returns (bool) {
-        if (n < 2)
+        if (n < 2) {
             return false;
-        if (n == 2)
+        }
+        if (n == 2) {
             return true;
-        require(n < 4759123141, "PrimeTime: ENDED");
+        }
+        if (n >= 4759123141) {
+            revert PrimeTimeEndedError();
+        }
         if (n % 2 == 0) {
             return false;
         }
-        uint256 s;
+        uint256 s = 0;
         uint256 d = n - 1;
         while ((d & 1) == 0) {
             d >>= 1;
@@ -111,7 +125,7 @@ contract PrimeTime is Owned(tx.origin), ReentrancyGuard, ERC721, IPrimeTimeError
         return true;
     }
 
-    function _modExp(uint256 _b, uint256 _e, uint256 _m) internal returns (uint256 result) {
+    function _modExp(uint256 _b, uint256 _e, uint256 _m) internal view returns (uint256 result) {
         assembly {
             // Free memory pointer
             let pointer := mload(0x40)
@@ -127,10 +141,10 @@ contract PrimeTime is Owned(tx.origin), ReentrancyGuard, ERC721, IPrimeTimeError
             mstore(add(pointer, 0xa0), _m)
 
             // Store the result
-            let value := mload(0xc0)
+            let value := add(pointer, 0xc0)
 
             // Call the precompiled contract 0x05 = bigModExp
-            if iszero(call(not(0), 0x05, 0, pointer, 0xc0, value, 0x20)) { revert(0, 0) }
+            if iszero(staticcall(gas(), 0x05, pointer, 0xc0, value, 0x20)) { revert(0, 0) }
 
             result := mload(value)
         }
@@ -145,15 +159,15 @@ contract PrimeTime is Owned(tx.origin), ReentrancyGuard, ERC721, IPrimeTimeError
         uint256 doy = doe - (365 * yoe + yoe / 4 - yoe / 100); // [0, 365]
         uint256 mp = (5 * doy + 2) / 153; // [0, 11]
         d = uint8(doy - (153 * mp + 2) / 5 + 1); // [1, 31]
-        if (mp < 10)
+        if (mp < 10) {
             m = uint8(mp + 3);
-        else
+        } else {
             m = uint8(mp - 9);
+        }
         y = m <= 2 ? y + 1 : y;
     }
 
-        function _dateTimeFromTimestamp(uint256 timestamp) internal pure returns (DateTime memory datetime)
-    {
+    function _dateTimeFromTimestamp(uint256 timestamp) internal pure returns (DateTime memory datetime) {
         (uint16 year, uint8 month, uint8 day) = _civilFromDays(timestamp / 86400);
         datetime.year = year;
         datetime.month = month;
@@ -164,54 +178,51 @@ contract PrimeTime is Owned(tx.origin), ReentrancyGuard, ERC721, IPrimeTimeError
         datetime.hour = uint8(secondsFromMidnight / 3600);
     }
 
-
-
-    function dateTimeFromTimestamp(uint256 timestamp) external pure returns (DateTime memory datetime)
-    {
+    function dateTimeFromTimestamp(uint256 timestamp) external pure returns (DateTime memory datetime) {
         return _dateTimeFromTimestamp(timestamp);
     }
 
-    function _primeTraits(uint32 timestamp, DateTime memory dt) internal returns (uint256 traits)
-    {
+    function _primeTraits(uint32 timestamp, DateTime memory dt) internal returns (uint8 traits) {
         traits = (_isPrime(timestamp) ? 1 : 0);
-        traits = (traits<<1) + (_isPrime(dt.year) ? 1 : 0);
-        traits = (traits<<1) + (_isPrime(dt.month) ? 1 : 0);
-        traits = (traits<<1) + (_isPrime(dt.day) ? 1 : 0);
-        traits = (traits<<1) + (_isPrime(dt.hour) ? 1 : 0);
-        traits = (traits<<1) + (_isPrime(dt.minute) ? 1 : 0);
-        traits = (traits<<1) + (_isPrime(dt.second) ? 1 : 0);
+        traits = (traits << 1) | (_isPrime(dt.year) ? 1 : 0);
+        traits = (traits << 1) | (_isPrime(dt.month) ? 1 : 0);
+        traits = (traits << 1) | (_isPrime(dt.day) ? 1 : 0);
+        traits = (traits << 1) | (_isPrime(dt.hour) ? 1 : 0);
+        traits = (traits << 1) | (_isPrime(dt.minute) ? 1 : 0);
+        traits = (traits << 1) | (_isPrime(dt.second) ? 1 : 0);
     }
 
-    
     function isPrime(uint256 n) external returns (bool) {
         return _isPrime(n);
     }
-    
+
     function modExp(uint256 _b, uint256 _e, uint256 _m) external returns (uint256 result) {
         return _modExp(_b, _e, _m);
     }
 
-    function tokenURI(uint256 tokenId) public override returns (string memory)
-    {
-        if (tokenId >= timestampOf.length)
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        if (tokenId >= dataOf.length) {
             revert TokenDoesNotExist();
+        }
 
         if (renderer == address(0)) {
             return "";
         }
-        uint32 timestamp = timestampOf[tokenId];
+        uint40 data = dataOf[tokenId];
+        uint32 timestamp = uint32(data >> 8);
+        uint256 traits = data & 0xff;
+
         DateTime memory datetime = _dateTimeFromTimestamp(uint256(timestamp));
-        uint256 traits = _primeTraits(timestamp, datetime);
         return IRenderer(renderer).tokenURI(
-                tokenId,
-                traits,
-                timestamp,
-                datetime.year,
-                datetime.month,
-                datetime.day,
-                datetime.hour,
-                datetime.minute,
-                datetime.second
-            );
+            tokenId,
+            traits,
+            timestamp,
+            datetime.year,
+            datetime.month,
+            datetime.day,
+            datetime.hour,
+            datetime.minute,
+            datetime.second
+        );
     }
 }
