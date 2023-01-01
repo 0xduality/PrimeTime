@@ -20,6 +20,9 @@ contract PrimeTime is Owned(tx.origin), ReentrancyGuard, ERC721, IPrimeTimeError
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
 
+    event NewPrice(uint256 price);
+    event NewRenderer(address r);
+
     /*//////////////////////////////////////////////////////////////
                          METADATA STORAGE/LOGIC
     //////////////////////////////////////////////////////////////*/
@@ -33,8 +36,8 @@ contract PrimeTime is Owned(tx.origin), ReentrancyGuard, ERC721, IPrimeTimeError
         uint8 second;
     }
 
-    address renderer;
-    uint256 mintPrice;
+    address public renderer;
+    uint256 public mintPrice;
     mapping(uint32 => bool) public minted;
     uint40[] public dataOf;
 
@@ -43,10 +46,15 @@ contract PrimeTime is Owned(tx.origin), ReentrancyGuard, ERC721, IPrimeTimeError
     //////////////////////////////////////////////////////////////*/
 
     constructor(string memory _name, string memory _symbol) {
+        name = _name;
+        symbol = _symbol;
         mintPrice = 0.1 ether;
+        emit NewPrice(mintPrice);
     }
 
     function mint() external payable nonReentrant {
+        if (msg.sender != tx.origin)
+            revert NotEOAError();
         if (msg.value < mintPrice) {
             revert BelowMintPriceError();
         }
@@ -69,6 +77,7 @@ contract PrimeTime is Owned(tx.origin), ReentrancyGuard, ERC721, IPrimeTimeError
 
     function setMintPrice(uint256 price) external onlyOwner {
         mintPrice = price;
+        emit NewPrice(price);
     }
 
     function withdraw() external onlyOwner {
@@ -77,9 +86,10 @@ contract PrimeTime is Owned(tx.origin), ReentrancyGuard, ERC721, IPrimeTimeError
 
     function setRenderer(address rendererContract) external onlyOwner {
         renderer = rendererContract;
+        emit NewRenderer(rendererContract);
     }
 
-    function _isPrime(uint256 n) internal returns (bool) {
+    function _isPrime(uint256 n) internal view returns (bool) {
         if (n < 2) {
             return false;
         }
@@ -182,7 +192,7 @@ contract PrimeTime is Owned(tx.origin), ReentrancyGuard, ERC721, IPrimeTimeError
         return _dateTimeFromTimestamp(timestamp);
     }
 
-    function _primeTraits(uint32 timestamp, DateTime memory dt) internal returns (uint8 traits) {
+    function _primeTraits(uint32 timestamp, DateTime memory dt) internal view returns (uint8 traits) {
         traits = (_isPrime(timestamp) ? 1 : 0);
         traits = (traits << 1) | (_isPrime(dt.year) ? 1 : 0);
         traits = (traits << 1) | (_isPrime(dt.month) ? 1 : 0);
@@ -192,11 +202,11 @@ contract PrimeTime is Owned(tx.origin), ReentrancyGuard, ERC721, IPrimeTimeError
         traits = (traits << 1) | (_isPrime(dt.second) ? 1 : 0);
     }
 
-    function isPrime(uint256 n) external returns (bool) {
+    function isPrime(uint256 n) external view returns (bool) {
         return _isPrime(n);
     }
 
-    function modExp(uint256 _b, uint256 _e, uint256 _m) external returns (uint256 result) {
+    function modExp(uint256 _b, uint256 _e, uint256 _m) external view returns (uint256 result) {
         return _modExp(_b, _e, _m);
     }
 

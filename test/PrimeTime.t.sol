@@ -30,7 +30,7 @@ contract PrimeTimeTest is Test, IPrimeTimeErrors {
         nft.setRenderer(address(renderer));
     }
 
-    function testmodExp() public {
+    function testmodExp() public view {
         require(nft.modExp(2, 3, 1) == 0);
         require(nft.modExp(2, 3, 2) == 0);
         require(nft.modExp(2, 3, 3) == 2);
@@ -51,7 +51,7 @@ contract PrimeTimeTest is Test, IPrimeTimeErrors {
         require(nft.modExp(3, 3, 9) == 0);
     }
 
-    function testprime() public {
+    function testprime() public view {
         require(nft.isPrime(3));
         require(nft.isPrime(5));
         require(nft.isPrime(7));
@@ -77,7 +77,7 @@ contract PrimeTimeTest is Test, IPrimeTimeErrors {
         }
     }
 
-    function testone() public {
+    function testone() public view {
         require(!nft.isPrime(1663651523));
         require(nft.isPrime(1663651537));
     }
@@ -122,10 +122,92 @@ contract PrimeTimeTest is Test, IPrimeTimeErrors {
 
     function testHappyCase() public {
         vm.warp(1825974673);
-        uint256 s = gasleft();
-        vm.prank(alice);
+        vm.prank(alice, alice);
         nft.mint{value: 0.1 ether}();
-        console.log("mint gas", s - gasleft());
+        skip(3600);
+        vm.prank(alice, alice);
+        nft.mint{value: 0.1 ether}();
+        skip(3600);
+        vm.prank(alice, alice);
+        nft.mint{value: 0.1 ether}();
         console.log(nft.tokenURI(0));
+        console.log(nft.tokenURI(1));
+        console.log(nft.tokenURI(2));
+    }
+
+    function testRandomMintTime() public {
+        bytes32 state = keccak256("foo");
+        for(uint i=0; i < 99; ++i){
+            uint32 time = uint32(bytes4(state));
+            vm.warp(time);
+            vm.prank(alice, alice);
+            nft.mint{value: 0.1 ether}();
+            console.log(nft.tokenURI(i));
+            state = keccak256(abi.encode(state));
+        }
+    }
+
+    function testNonEOA() public {
+        vm.prank(alice);
+        vm.expectRevert(NotEOAError.selector);
+        nft.mint{value: 0.1 ether}();
+    }
+
+    function testBelowMintPrice() public {
+        vm.prank(alice, alice);
+        vm.expectRevert(BelowMintPriceError.selector);
+        nft.mint{value: 0.09 ether}();
+    }
+
+    function testEndOfTime() public {
+        uint256 cusp = type(uint32).max;
+        vm.warp(cusp + 1);
+        vm.prank(alice, alice);
+        vm.expectRevert(PrimeTimeEndedError.selector);
+        nft.mint{value: 0.1 ether}();
+    }
+
+    function testUnique() public {
+        vm.prank(alice, alice);
+        nft.mint{value: 0.1 ether}();
+        vm.prank(alice, alice);
+        vm.expectRevert(AlreadyMintedError.selector);
+        nft.mint{value: 0.1 ether}();
+    }
+
+    function testNonExistentToken() public {
+        vm.prank(alice, alice);
+        nft.mint{value: 0.1 ether}();
+        vm.expectRevert(TokenDoesNotExist.selector);
+        string memory uri = nft.tokenURI(420);
+    }
+
+    function testSetPrice() public {
+        vm.prank(deployer);
+        nft.setMintPrice(0.5 ether);
+        vm.prank(alice, alice);
+        vm.expectRevert(BelowMintPriceError.selector);
+        nft.mint{value: 0.49 ether}();
+        vm.prank(alice, alice);
+        nft.mint{value: 0.5 ether}();
+        uint b = deployer.balance;
+        vm.prank(deployer);
+        nft.withdraw();
+        require(b+0.5 ether == deployer.balance, ":(");
+    }
+
+    function testSetRemderer() public {
+        vm.prank(alice, alice);
+        nft.mint{value: 0.1 ether}();
+        address r = nft.renderer();
+        string memory before = nft.tokenURI(0);
+        vm.prank(deployer);
+        nft.setRenderer(address(0));
+        string memory mid = nft.tokenURI(0);
+        vm.prank(deployer);
+        nft.setRenderer(r);
+        string memory restored = nft.tokenURI(0);
+        require(bytes(mid).length == 0, ":|");
+        require(keccak256(abi.encode(before)) == keccak256(abi.encode(restored)), ":(");
     }
 }
