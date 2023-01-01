@@ -10,36 +10,32 @@ contract Renderer {
 
     constructor() {}
 
-    function t(uint8 x) internal pure returns (string memory) {
-        return (x < 10) ? string(abi.encodePacked("0", uint256(x).toString())) : uint256(x).toString();
-    }
-
     function s(uint256 i) internal pure returns (string memory) {
-        return i == 1 ? "true" : "false";
+        return i == 1 ? "prime" : "composite";
     }
 
     function jsonifyTraits(uint256 primeTraits) internal pure returns (string memory) {
         return string(
             abi.encodePacked(
-                '"attributes": [{"trait_type": "Prime second", "value":"',
+                '"attributes": [{"trait_type": "Second", "value":"',
                 s(primeTraits & 1),
                 '"},',
-                '{"trait_type": "Prime minute", "value":"',
+                '{"trait_type": "Minute", "value":"',
                 s((primeTraits >> 1) & 1),
                 '"},',
-                '{"trait_type": "Prime hour", "value":"',
+                '{"trait_type": "Hour", "value":"',
                 s((primeTraits >> 2) & 1),
                 '"},',
-                '{"trait_type": "Prime day", "value":"',
+                '{"trait_type": "Day", "value":"',
                 s((primeTraits >> 3) & 1),
                 '"},',
-                '{"trait_type": "Prime month", "value":"',
+                '{"trait_type": "Month", "value":"',
                 s((primeTraits >> 4) & 1),
                 '"},',
-                '{"trait_type": "Prime year", "value":"',
+                '{"trait_type": "Year", "value":"',
                 s((primeTraits >> 5) & 1),
                 '"},',
-                '{"trait_type": "Prime unix timestamp", "value":"',
+                '{"trait_type": "Timestamp", "value":"',
                 s((primeTraits >> 6) & 1),
                 '"}]}'
             )
@@ -183,11 +179,6 @@ contract Renderer {
         string memory minutesHandRot = string(abi.encodePacked((rotx10 / 10).toString(), ".", (rotx10 % 10).toString()));
         rotx10 = 300 * (uint256(hour) % 12) + uint256(minute) * 5;
         string memory hoursHandRot = string(abi.encodePacked((rotx10 / 10).toString(), ".", (rotx10 % 10).toString()));
-        //string memory iso = string(
-        //    abi.encodePacked(
-        //        uint256(year).toString(), "-", t(month), "-", t(day), "T", t(hour), ":", t(minute), ":", t(second), "Z"
-        //    )
-        //);
         rotx10 = (timestamp / 3600) % 360;
 
         svgString = string(
@@ -202,7 +193,7 @@ contract Renderer {
                 "<stop offset='0'  stop-color='#ffffff'/>" "<stop offset='1'  stop-color='hsl(",
                 rotx10.toString(),
                 ", 100%, 63%)'/></linearGradient></defs>"
-                "<rect x='-100' y='-150' fill='url(#a)' width='100%' height='100%'/>"
+                "<rect x='-100' y='-150' fill='url(#a)' rx='2%' ry='2%' width='100%' height='100%'/>"
                 "<g id='clock' transform='translate(25,0)'>" "<g id='markerSet'>" "<use xlink:href='#hourMarker'/>"
                 "<use xlink:href='#minMarker' transform='rotate( 6)'/>"
                 "<use xlink:href='#minMarker' transform='rotate(12)'/>"
@@ -227,10 +218,10 @@ contract Renderer {
                 hoursHandRot,
                 ")'/><circle cx='0' cy='0' r='9' fill='black'/></g><text x='-90' y='-120' class='txt'>",
                 date,
-//                "</text><text x='-90' y='130' class='txt'>#",
-//                tokenId.toString(),
- //               "</text><text x='55' y='130' class='txt'>",
-//                uint256(timestamp).toString(),
+                "</text><text x='-90' y='130' class='txt'>#",
+                tokenId.toString(),
+               "</text><text x='55' y='130' class='txt'>",
+                uint256(timestamp).toString(),
                 "</text></svg>"
             )
         );

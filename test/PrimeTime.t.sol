@@ -210,4 +210,13 @@ contract PrimeTimeTest is Test, IPrimeTimeErrors {
         require(bytes(mid).length == 0, ":|");
         require(keccak256(abi.encode(before)) == keccak256(abi.encode(restored)), ":(");
     }
+
+    function testAllowMultiple() public {
+        vm.prank(deployer);
+        nft.toggleAllowMultiple();
+        vm.prank(alice, alice);
+        nft.mint{value: 0.1 ether}();
+        vm.prank(alice, alice);
+        nft.mint{value: 0.1 ether}();
+    }
 }

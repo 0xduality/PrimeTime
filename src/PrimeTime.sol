@@ -22,6 +22,7 @@ contract PrimeTime is Owned(tx.origin), ReentrancyGuard, ERC721, IPrimeTimeError
 
     event NewPrice(uint256 price);
     event NewRenderer(address r);
+    event AllowMultiple(bool enabled);
 
     /*//////////////////////////////////////////////////////////////
                          METADATA STORAGE/LOGIC
@@ -37,6 +38,7 @@ contract PrimeTime is Owned(tx.origin), ReentrancyGuard, ERC721, IPrimeTimeError
     }
 
     address public renderer;
+    bool public allowMultiple;
     uint256 public mintPrice;
     mapping(uint32 => bool) public minted;
     uint40[] public dataOf;
@@ -62,7 +64,7 @@ contract PrimeTime is Owned(tx.origin), ReentrancyGuard, ERC721, IPrimeTimeError
             revert PrimeTimeEndedError();
         }
         uint32 timestamp = uint32(block.timestamp);
-        if (minted[timestamp]) {
+        if (!allowMultiple && minted[timestamp]) {
             revert AlreadyMintedError();
         }
         minted[timestamp] = true;
@@ -78,6 +80,12 @@ contract PrimeTime is Owned(tx.origin), ReentrancyGuard, ERC721, IPrimeTimeError
     function setMintPrice(uint256 price) external onlyOwner {
         mintPrice = price;
         emit NewPrice(price);
+    }
+
+    function toggleAllowMultiple() external onlyOwner {
+        bool newValue = !allowMultiple;
+        allowMultiple = newValue;
+        emit AllowMultiple(newValue);
     }
 
     function withdraw() external onlyOwner {
