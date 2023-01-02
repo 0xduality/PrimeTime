@@ -11,7 +11,7 @@ contract Renderer {
     constructor() {}
 
     function s(uint256 i) internal pure returns (string memory) {
-        return i == 1 ? "prime" : "composite";
+        return i == 1 ? "prime" : "not prime";
     }
 
     function jsonifyTraits(uint256 primeTraits) internal pure returns (string memory) {

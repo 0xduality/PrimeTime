@@ -14,11 +14,7 @@
       "cov": "forge clean && forge coverage --via-ir --report lcov && genhtml -o report lcov.info",
       "snapshot": "forge clean && forge snapshot",
       "gas-report": "forge clean && forge test --gas-report",
-      "deploy": ". `pwd`/.env && echo $RPC_URL && forge script Deploy --rpc-url $RPC_URL --broadcast -vvvv --private-key $DEPLOYER_KEY", 
-      "deploy-verify": ". `pwd`/.env && forge create src/Greeter.sol:Greeter --rpc-url=$RPC_URL --private-key=$DEPLOYER_KEY --constructor-args 'GM' --verify",
-      "mint":  ". `pwd`/.env && cast send 0xE7bA07A767ebDeAaf65c5148646e3aD7d79eF6ba 'mint()' --gas-limit 600000 --value '0.1 ether' --rpc-url=$RPC_URL --private-key=$DEPLOYER_KEY", 
-      "see":  ". `pwd`/.env && cast call 0xE7bA07A767ebDeAaf65c5148646e3aD7d79eF6ba 'tokenURI(uint256)(string)' 0 --rpc-url=$RPC_URL", 
-      "mintmain":  ". `pwd`/.env && cast send --value '0.1 ether' --rpc-url=$RPC_URL 0x7615aa588432A4c0F3E24349f48C48cB9420Aa49 'mint()' --private-key=$DEPLOYER_KEY", 
-      "withdraw":  ". `pwd`/.env && cast send --rpc-url=$RPC_URL 0x7615aa588432A4c0F3E24349f48C48cB9420Aa49 'withdraw()' --private-key=$DEPLOYER_KEY"
+      "deploy-renderer": ". `pwd`/.env && forge create src/Renderer.sol:Renderer --rpc-url=$RPC_URL --private-key=$DEPLOYER_KEY --verify",
+      "deploy-nft": ". `pwd`/.env && forge create src/PrimeTime.sol:PrimeTime --rpc-url=$RPC_URL --private-key=$DEPLOYER_KEY --verify --constructor-args 'PrimeTime' 'PT'",
   }
 }
