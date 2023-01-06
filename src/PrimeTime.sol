@@ -9,8 +9,6 @@ import {ERC721} from "./ERC721.sol";
 import {IPrimeTimeErrors} from "./IPrimeTimeErrors.sol";
 import {IRenderer} from "./IRenderer.sol";
 
-import "forge-std/Test.sol";
-
 // Simplified version of BotThis where every wallet can only bid on one NFT
 contract PrimeTime is Owned(tx.origin), ReentrancyGuard, ERC721, IPrimeTimeErrors {
     using SafeTransferLib for address;

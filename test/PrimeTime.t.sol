@@ -2,7 +2,6 @@
 pragma solidity ^0.8.16;
 
 import "forge-std/Test.sol";
-import "forge-std/Test.sol";
 import "../src/PrimeTime.sol";
 import "../src/Renderer.sol";
 import "../src/IPrimeTimeErrors.sol";
@@ -137,14 +136,19 @@ contract PrimeTimeTest is Test, IPrimeTimeErrors {
 
     function testRandomMintTime() public {
         bytes32 state = keccak256("foo");
+        uint256 M = 0;
         for(uint i=0; i < 99; ++i){
             uint32 time = uint32(bytes4(state));
-            vm.warp(time);
+
+            vm.warp(time | 1);
             vm.prank(alice, alice);
+            uint256 s = gasleft();
             nft.mint{value: 0.1 ether}();
-            console.log(nft.tokenURI(i));
+            s -= gasleft();
+            M = M > s ? M : s;
             state = keccak256(abi.encode(state));
         }
+        console.log(M);
     }
 
     function testNonEOA() public {
@@ -180,6 +184,7 @@ contract PrimeTimeTest is Test, IPrimeTimeErrors {
         nft.mint{value: 0.1 ether}();
         vm.expectRevert(TokenDoesNotExist.selector);
         string memory uri = nft.tokenURI(420);
+        console.log(uri);
     }
 
     function testSetPrice() public {
