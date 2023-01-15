@@ -12,3 +12,9 @@ out/
 flattened.txt
 
 broadcast
+
+lcov.info
+node_modules/
+report/
+
+yarn-error.log
